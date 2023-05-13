@@ -32,45 +32,56 @@ connection.connect((err) => {
 });
 
 // Function to create the employeedatabase if it doesn't exist
-function createDatabase() {
-  connection.query('CREATE DATABASE IF NOT EXISTS employeedatabase', (err) => {
-    if (err) throw err;
-    console.log('employeedatabase created or already exists.');
-
-    // Connect to the employeedatabase
-    connection.changeUser({ database: 'employeedatabase' }, (err) => {
-      if (err) throw err;
-      console.log('Connected to employeedatabase.');
-
-      // Populate the database with schema information
-      populateDatabase();
+async function createDatabase() {
+  await new Promise((resolve, reject) => {
+    connection.query('CREATE DATABASE IF NOT EXISTS employeedatabase', (err) => {
+      if (err) reject(err);
+      console.log('employeedatabase created or already exists.');
+      resolve();
     });
   });
+
+  // Connect to the employeedatabase
+  await new Promise((resolve, reject) => {
+    connection.changeUser({ database: 'employeedatabase' }, (err) => {
+      if (err) reject(err);
+      console.log('Connected to employeedatabase.');
+      resolve();
+    });
+  });
+
+  // Populate the database with schema information
+  await populateDatabase();
 }
 
 // Function to populate the database with schema and seed data
-function populateDatabase() {
+async function populateDatabase() {
   const schemaPath = './db/schema.sql';
   const seedPath = './db/seeds.sql';
 
   const schema = fs.readFileSync(schemaPath, 'utf8');
   const seeds = fs.readFileSync(seedPath, 'utf8');
 
-  connection.query(schema, (err) => {
-    if (err) throw err;
-
-    console.log('Database schema created.');
-
-    connection.query(seeds, (err) => {
-      if (err) throw err;
-
-      console.log('Database seeded with data.');
-
-      // Start the command-line interface
-      showMenu();
+  await new Promise((resolve, reject) => {
+    connection.query(schema, (err) => {
+      if (err) reject(err);
+      console.log('Database schema created.');
+      resolve();
     });
   });
+
+  await new Promise((resolve, reject) => {
+    connection.query(seeds, (err) => {
+      if (err) reject(err);
+      console.log('Database seeded with data.');
+      resolve();
+    });
+  });
+
+  // Start the command-line interface
+  showMenu();
 }
+
 
 function showAsciiArt(value) {
   const figlet = require('figlet');
@@ -169,7 +180,7 @@ function showMenu() {
 // this function displays a new inquirer prompt, it's nested, this gives the option of what you want to delete
 // it minimises the original prompt list which is already a little too long by nesting the new delete options here instead of the main choices list
 // should probably nest the 'View By' options too
-async function deleteMenu() {
+function deleteMenu() {
   inquirer
     .prompt([
       {
@@ -194,12 +205,9 @@ async function deleteMenu() {
           showMenu();
           break;
       }
-    })
-    .catch((err) => {
-      console.error(err);
     });
-}
 
+}
 
 // Functions: These are using the promisify to ensure that the function executions are paused until the query resuls are available. This also allows us to 'catch' errors.
 
@@ -634,112 +642,125 @@ async function viewEmployeesByDepartment() {
 }
 
 // delete department function
-function deleteDepartment() {
-  // Retrieve the list of departments from the database
-  const query = 'SELECT id, name FROM department';
+async function deleteDepartment() {
+  try {
+    // Retrieve the list of departments from the database
+    const query = 'SELECT id, name FROM department';
+    const departments = await new Promise((resolve, reject) => {
+      connection.query(query, (err, res) => {
+        if (err) {
+          console.error('Error retrieving departments:', err);
+          reject(err);
+        } else {
+          const departmentList = res.map((department) => ({
+            name: `${department.name} (ID: ${department.id})`,
+            value: department.id,
+          }));
+          resolve(departmentList);
+        }
+      });
+    });
 
-  connection.query(query, (err, res) => {
-    if (err) {
-      console.error('Error retrieving departments:', err);
-      showMenu();
-    } else {
-      const departments = res.map((department) => ({
-        name: `${department.name} (ID: ${department.id})`,
-        value: department.id,
-      }));
+    // Prompt for the department ID you want to delete
+    const answer = await inquirer.prompt([
+      {
+        type: 'list',
+        name: 'departmentId',
+        message: 'Select the department you want to delete:',
+        choices: departments,
+      },
+    ]);
 
-      // Prompt for the department ID you want to delete
-      inquirer
-        .prompt([
-          {
-            type: 'list',
-            name: 'departmentId',
-            message: 'Select the department you want to delete:',
-            choices: departments,
-          },
-        ])
-        .then((answer) => {
-          const departmentId = answer.departmentId;
+    const departmentId = answer.departmentId;
 
-          // Delete the department from the database
-          const deleteQuery = 'DELETE FROM department WHERE id = ?';
-          connection.query(deleteQuery, [departmentId], (err, res) => {
-            if (err) {
-              console.error('Error deleting department:', err);
-            } else {
-              console.log('Department deleted successfully!');
-            }
-            showMenu();
-          });
-        })
-        .catch((err) => {
-          console.error(err);
-          showMenu();
-        });
-    }
-  });
+    // Delete the department from the database
+    const deleteQuery = 'DELETE FROM department WHERE id = ?';
+    await new Promise((resolve, reject) => {
+      connection.query(deleteQuery, [departmentId], (err, res) => {
+        if (err) {
+          console.error('Error deleting department:', err);
+          reject(err);
+        } else {
+          console.log('Department deleted successfully!');
+          resolve();
+        }
+      });
+    });
+  } catch (err) {
+    console.error(err);
+  }
+
+  showMenu();
 }
 
 // delete role function
-function deleteRole() {
-  // Retrieve the list of roles from the database
-  const query = 'SELECT id, title FROM role';
+async function deleteRole() {
+  try {
+    // Retrieve the list of roles from the database
+    const query = 'SELECT id, title FROM role';
+    const roles = await new Promise((resolve, reject) => {
+      connection.query(query, (err, res) => {
+        if (err) {
+          console.error('Error retrieving roles:', err);
+          reject(err);
+        } else {
+          const roleList = res.map((role) => ({
+            name: `${role.title} (ID: ${role.id})`,
+            value: role.id,
+          }));
+          resolve(roleList);
+        }
+      });
+    });
 
-  connection.query(query, (err, res) => {
-    if (err) {
-      console.error('Error retrieving roles:', err);
-      showMenu();
+    // Prompt for the role ID you want to delete
+    const answer = await inquirer.prompt([
+      {
+        type: 'list',
+        name: 'roleId',
+        message: 'Select the role you want to delete:',
+        choices: roles,
+      },
+    ]);
+
+    const roleId = answer.roleId;
+
+    // Check if there are any employees assigned to the role being deleted
+    const checkQuery = 'SELECT COUNT(*) AS count FROM employee WHERE roleId = ?';
+    const result = await new Promise((resolve, reject) => {
+      connection.query(checkQuery, [roleId], (err, res) => {
+        if (err) {
+          console.error('Error checking employees:', err);
+          reject(err);
+        } else {
+          const count = res[0].count;
+          resolve(count);
+        }
+      });
+    });
+
+    if (result > 0) {
+      console.log('Cannot delete the role. There are employees assigned to this role.');
     } else {
-      const roles = res.map((role) => ({
-        name: `${role.title} (ID: ${role.id})`,
-        value: role.id,
-      }));
-
-      // Prompt for the role ID you want to delete
-      inquirer
-        .prompt([
-          {
-            type: 'list',
-            name: 'roleId',
-            message: 'Select the role you want to delete:',
-            choices: roles,
-          },
-        ])
-        .then((answer) => {
-          const roleId = answer.roleId;
-
-          // Check if there are any employees assigned to the role being deleted
-          const checkQuery = 'SELECT COUNT(*) AS count FROM employee WHERE roleId = ?';
-          connection.query(checkQuery, [roleId], (err, res) => {
-            if (err) {
-              console.error('Error checking employees:', err);
-              showMenu();
-            } else {
-              const count = res[0].count;
-              if (count > 0) {
-                console.log('Cannot delete the role. There are employees assigned to this role.');
-                showMenu();
-              } else {
-                // Delete the role from the database
-                const deleteQuery = 'DELETE FROM role WHERE id = ?';
-                connection.query(deleteQuery, [roleId], (err, res) => {
-                  if (err) {
-                    console.error('Error deleting role:', err);
-                  } else {
-                    console.log('Role deleted successfully!');
-                  }
-                  showMenu();
-                });
-              }
-            }
-          });
-        })
-        .catch((err) => {
-          console.error(err);
-          showMenu();
+      // Delete the role from the database
+      const deleteQuery = 'DELETE FROM role WHERE id = ?';
+      await new Promise((resolve, reject) => {
+        connection.query(deleteQuery, [roleId], (err, res) => {
+          if (err) {
+            console.error('Error deleting role:', err);
+            reject(err);
+          } else {
+            console.log('Role deleted successfully!');
+            resolve();
+          }
         });
+      });
     }
-  });
+  } catch (err) {
+    console.error(err);
+  }
+
+  showMenu();
 }
 
 // delete employee function
@@ -787,51 +808,57 @@ async function deleteEmployee() {
 }
 
 // view department budget function
-function viewDepartmentBudget() {
-  // Retrieve the list of departments from the database
-  const query = 'SELECT id, name FROM department';
+async function viewDepartmentBudget() {
+  try {
+    // Retrieve the list of departments from the database
+    const query = 'SELECT id, name FROM department';
+    const departments = await new Promise((resolve, reject) => {
+      connection.query(query, (err, res) => {
+        if (err) {
+          console.error('Error retrieving departments:', err);
+          reject(err);
+        } else {
+          const departmentList = res.map((department) => ({
+            name: `${department.name} (ID: ${department.id})`,
+            value: department.id,
+          }));
+          resolve(departmentList);
+        }
+      });
+    });
 
-  connection.query(query, (err, res) => {
-    if (err) {
-      console.error('Error retrieving departments:', err);
-      showMenu();
-    } else {
-      const departments = res.map((department) => ({
-        name: `${department.name} (ID: ${department.id})`,
-        value: department.id,
-      }));
+    // Prompt for the department ID to view the budget
+    const answer = await inquirer.prompt([
+      {
+        type: 'list',
+        name: 'departmentId',
+        message: 'Select the department to view the budget:',
+        choices: departments,
+      },
+    ]);
 
-      // Prompt for the department ID to view the budget
-      inquirer
-        .prompt([
-          {
-            type: 'list',
-            name: 'departmentId',
-            message: 'Select the department to view the budget:',
-            choices: departments,
-          },
-        ])
-        .then((answer) => {
-          const departmentId = answer.departmentId;
+    const departmentId = answer.departmentId;
 
-          // Calculate the department budget
-          const budgetQuery =
-            'SELECT SUM(r.salary) AS departmentBudget FROM employee e INNER JOIN role r ON e.roleId = r.id WHERE r.departmentId = ?';
-          connection.query(budgetQuery, [departmentId], (err, res) => {
-            if (err) {
-              console.error('Error calculating department budget:', err);
-            } else {
-              const departmentBudget = res[0].departmentBudget;
-              console.log('\n\x1b[36m\x1b[1mDepartment Budget:\x1b[0m \x1b[35m\x1b[4m$' + departmentBudget + '\x1b[0m\n');
-            }
-            showMenu();
-          });
-        })
-        .catch((err) => {
-          console.error(err);
-          showMenu();
-        });
-    }
-  });
+    // Calculate the department budget
+    const budgetQuery =
+      'SELECT SUM(r.salary) AS departmentBudget FROM employee e INNER JOIN role r ON e.roleId = r.id WHERE r.departmentId = ?';
+    const result = await new Promise((resolve, reject) => {
+      connection.query(budgetQuery, [departmentId], (err, res) => {
+        if (err) {
+          console.error('Error calculating department budget:', err);
+          reject(err);
+        } else {
+          const departmentBudget = res[0].departmentBudget;
+          resolve(departmentBudget);
+        }
+      });
+    });
+
+    console.log(`\n\x1b[36m\x1b[1mDepartment Budget:\x1b[0m \x1b[35m\x1b[4m$${result}\x1b[0m\n`);
+  } catch (err) {
+    console.error(err);
+  }
+
+  showMenu();
 }
 
