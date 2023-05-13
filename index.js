@@ -86,7 +86,6 @@ function showAsciiArt(value) {
 }
 
 // Show the main menu options
-// Show the main menu options
 function showMenu() {
   inquirer
     .prompt([
@@ -102,41 +101,61 @@ function showMenu() {
           'Add a role',
           'Add an employee',
           'Update an employee role',
+          'Update an employee manager',
+          'View employees by manager',
+          'View employees by department',
+          'View department budget',
           'Exit',
         ],
       },
     ])
-    .then((answers) => {
-      switch (answers.option) {
-        case 'View all departments':      
-          viewDepartments();                // [x]  resembles demonstration video
+    .then((answer) => {
+      switch (answer.option) {
+        case 'View all departments':
+          viewDepartments();
           break;
-        case 'View all roles':              
-          viewRoles();                      // []  resembles demonstration video
+        case 'View all roles':
+          viewRoles();
           break;
-        case 'View all employees':          
-          viewEmployees();                  // [x]  resembles demonstration video
-          break;      
-        case 'Add a department':            
-          addDepartment();                  // [x]  resembles demonstration video
+        case 'View all employees':
+          viewEmployees();
           break;
-        case 'Add a role':                  
-          addRole();                        // []  resembles demonstration video
+        case 'Add a department':
+          addDepartment();
           break;
-        case 'Add an employee':             
-          addEmployee();                    // [x]  resembles demonstration video
+        case 'Add a role':
+          addRole();
           break;
-        case 'Update an employee role':     
-          updateEmployeeRole();             // [x]  resembles demonstration video
+        case 'Add an employee':
+          addEmployee();
+          break;
+        case 'Update an employee role':
+          updateEmployeeRole();
+          break;
+        case 'Update an employee manager':
+          updateEmployeeManager();
+          break;
+        case 'View employees by manager':
+          viewEmployeesByManager();
+          break;
+        case 'View employees by department':
+          viewEmployeesByDepartment();
+          break;
+        case 'View department budget':
+          viewDepartmentBudget();
           break;
         case 'Exit':
-          connection.end();
           console.log('Goodbye!');
+          connection.end();
           break;
         default:
-          console.log('Invalid option. Please try again.');
+          console.log('Invalid option');
           showMenu();
+          break;
       }
+    })
+    .catch((err) => {
+      console.error(err);
     });
 }
 
@@ -165,7 +184,6 @@ async function viewDepartments() {
   }
 }
 
-
 //  function to view roles
 async function viewRoles() {
   try {
@@ -183,7 +201,6 @@ async function viewRoles() {
     console.error(err);
   }
 }
-
 
 // function to view employees
 async function viewEmployees() {
@@ -407,6 +424,58 @@ async function updateEmployeeRole() {
     await connection.promise().query('UPDATE employee SET roleId = ? WHERE id = ?', [roleId, employeeId]);
 
     console.log(`Employee with ID '${employeeId}' role updated successfully.`);
+
+    // Return to the main menu
+    showMenu();
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+async function updateEmployeeManager() {
+  try {
+    showAsciiArt('Updating Employee Manager');
+
+    // Fetch the list of employees
+    const employees = await connection.promise().query('SELECT id, firstName, lastName FROM employee');
+    const employeeChoices = employees[0].map((employee) => ({
+      name: `${employee.firstName} ${employee.lastName}`,
+      value: employee.id,
+    }));
+
+    // Prompt for the employee to update
+    const employeeAnswer = await inquirer.prompt([
+      {
+        type: 'list',
+        name: 'employeeId',
+        message: 'Select the employee to update:',
+        choices: employeeChoices,
+      },
+    ]);
+    const employeeId = employeeAnswer.employeeId;
+
+    // Fetch the list of managers
+    const managers = await connection.promise().query('SELECT id, firstName, lastName FROM employee WHERE id <> ?', [employeeId]);
+    const managerChoices = managers[0].map((manager) => ({
+      name: `${manager.firstName} ${manager.lastName}`,
+      value: manager.id,
+    }));
+
+    // Prompt for the new manager
+    const managerAnswer = await inquirer.prompt([
+      {
+        type: 'list',
+        name: 'managerId',
+        message: 'Select the new manager:',
+        choices: managerChoices,
+      },
+    ]);
+    const managerId = managerAnswer.managerId;
+
+    // Update the employee's manager in the database
+    await connection.promise().query('UPDATE employee SET managerId = ? WHERE id = ?', [managerId, employeeId]);
+
+    console.log('Employee manager updated successfully.');
 
     // Return to the main menu
     showMenu();
