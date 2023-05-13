@@ -5,13 +5,16 @@ This version is used for compatibility with commonJS modules
 showAsciiArtHeader();
 const mysql = require('mysql2');
 const inquirer = require('inquirer');
+const fs = require('fs');
 
 // Create a connection to the MySQL database
 const connection = mysql.createConnection({
   host: 'localhost',
   user: 'root',
   password: 'password',
+  multipleStatements: true,
 });
+
 
 // Connect to the database
 connection.connect((err) => {
@@ -32,6 +35,30 @@ function createDatabase() {
     connection.changeUser({ database: 'employeedatabase' }, (err) => {
       if (err) throw err;
       console.log('Connected to employeedatabase.');
+
+      // Populate the database with schema information
+      populateDatabase();
+    });
+  });
+}
+
+// Function to populate the database with schema and seed data
+function populateDatabase() {
+  const schemaPath = './db/schema.sql';
+  const seedPath = './db/seeds.sql';
+
+  const schema = fs.readFileSync(schemaPath, 'utf8');
+  const seeds = fs.readFileSync(seedPath, 'utf8');
+
+  connection.query(schema, (err) => {
+    if (err) throw err;
+
+    console.log('Database schema created.');
+
+    connection.query(seeds, (err) => {
+      if (err) throw err;
+
+      console.log('Database seeded with data.');
 
       // Start the command-line interface
       showMenu();
@@ -104,4 +131,20 @@ function showMenu() {
           showMenu();
       }
     });
+}
+
+// Function to view all departments
+function viewDepartments() {
+  // Query the database to retrieve all departments
+  connection.query('SELECT * FROM department', (err, results) => {
+    if (err) throw err;
+
+    console.log('Departments:');
+    results.forEach((department) => {
+      console.log(`${department.id} | ${department.name}`);
+    });
+
+    // Return to the main menu
+    showMenu();
+  });
 }
