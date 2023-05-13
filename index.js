@@ -2,7 +2,10 @@
 npm i inquirer@8.2.4 
 This version is used for compatibility with commonJS modules
 */
-showAsciiArtHeader();
+
+// Using 'figlet' for some ascii art, function draws ascii artwork application header
+showAsciiArt('EMPLOYEE MANAGEMENT SYSTEM');
+
 const mysql = require('mysql2');
 const inquirer = require('inquirer');
 const fs = require('fs');
@@ -69,10 +72,10 @@ function populateDatabase() {
   });
 }
 
-function showAsciiArtHeader() {
+function showAsciiArt(value) {
   const figlet = require('figlet');
 
-  figlet('EMPLOYEE MANAGEMENT SYSTEM', function (err, data) {
+  figlet(value, function (err, data) {
     if (err) {
       console.log('Something went wrong...');
       console.dir(err);
