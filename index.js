@@ -144,6 +144,7 @@ function showMenu() {
 // Function to view all departments
 async function viewDepartments() {
   try {
+    showAsciiArt('Viewing Departments');
     // Query the database to retrieve all departments
     const results = await queryAsync('SELECT * FROM department');
 
