@@ -432,6 +432,7 @@ async function updateEmployeeRole() {
   }
 }
 
+// update employee manager function
 async function updateEmployeeManager() {
   try {
     showAsciiArt('Updating Employee Manager');
@@ -483,3 +484,57 @@ async function updateEmployeeManager() {
     console.error(err);
   }
 }
+
+// view employees by manager function
+async function viewEmployeesByManager() {
+  try {
+    showAsciiArt('Viewing Employees by Manager');
+
+    // Fetch the list of managers
+    const managers = await connection.promise().query('SELECT DISTINCT CONCAT(firstName, " ", lastName) AS manager FROM employee WHERE managerId IS NULL');
+
+    // Prompt the user to select a manager
+    const managerChoices = managers[0].map(manager => manager.manager);
+    const answers = await inquirer.prompt([
+      {
+        type: 'list',
+        name: 'manager',
+        message: 'Select a manager:',
+        choices: managerChoices,
+      },
+    ]);
+
+    const selectedManager = answers.manager;
+
+    // Query the database to retrieve employees managed by the selected manager
+    const query = `
+      SELECT
+        e.id,
+        e.firstName,
+        e.lastName,
+        r.title AS jobRole,
+        d.name AS departmentName,
+        r.salary
+      FROM
+        employee e
+      INNER JOIN role r ON e.roleId = r.id
+      INNER JOIN department d ON r.departmentId = d.id
+      INNER JOIN employee m ON e.managerId = m.id
+      WHERE
+        CONCAT(m.firstName, ' ', m.lastName) = ?
+      ORDER BY
+        e.id
+    `;
+    const results = await connection.promise().query(query, [selectedManager]);
+
+    // Display the employee information using console.table
+    console.table(results[0]);
+
+    // Return to the main menu
+    showMenu();
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+
