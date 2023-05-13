@@ -105,6 +105,7 @@ function showMenu() {
           'View employees by manager',
           'View employees by department',
           'View department budget',
+          'Delete',
           'Exit',
         ],
       },
@@ -144,12 +145,45 @@ function showMenu() {
         case 'View department budget':
           viewDepartmentBudget();
           break;
+        case 'Delete':
+        deleteMenu();
+        break;
         case 'Exit':
           console.log('Goodbye!');
           connection.end();
           break;
-        default:
-          console.log('Invalid option');
+      }
+    })
+    .catch((err) => {
+      console.error(err);
+    });
+}
+
+// this function displays a new inquirer prompt, it's nested, this gives the option of what you want to delete
+// it minimises the original prompt list which is already a little too long by nesting the new delete options here instead of the main choices list
+// should probably nest the 'View By' options too
+async function deleteMenu() {
+  inquirer
+    .prompt([
+      {
+        type: 'list',
+        name: 'deleteOption',
+        message: 'Select an option to delete:',
+        choices: ['Delete a department', 'Delete a role', 'Delete an employee', 'Go back'],
+      },
+    ])
+    .then((answer) => {
+      switch (answer.deleteOption) {
+        case 'Delete a department':
+          deleteDepartment();
+          break;
+        case 'Delete a role':
+          deleteRole();
+          break;
+        case 'Delete an employee':
+          deleteEmployee();
+          break;
+        case 'Go back':
           showMenu();
           break;
       }
@@ -158,6 +192,7 @@ function showMenu() {
       console.error(err);
     });
 }
+
 
 // Functions: These are using the promisify to ensure that the function executions are paused until the query resuls are available. This also allows us to 'catch' errors.
 
@@ -207,25 +242,25 @@ async function viewEmployees() {
   try {
     showAsciiArt('Viewing Employees');
 
-    // Query the database to retrieve all employees with additional information
     const query = `
       SELECT
         employee.firstName,
         employee.lastName,
-        role.title AS jobRole,
-        department.name AS departmentName,
-        role.salary,
-        CONCAT(manager.firstName, ' ', manager.lastName) AS manager
+        IFNULL(role.title, 'Not assigned') AS jobRole,
+        IFNULL(department.name, 'Not assigned') AS departmentName,
+        IFNULL(role.salary, 'Not assigned') AS salary,
+        IFNULL(CONCAT(manager.firstName, ' ', manager.lastName), 'Not assigned') AS manager
       FROM
         employee
-      INNER JOIN role ON employee.roleId = role.id
-      INNER JOIN department ON role.departmentId = department.id
+      LEFT JOIN role ON employee.roleId = role.id
+      LEFT JOIN department ON role.departmentId = department.id
       LEFT JOIN employee manager ON employee.managerId = manager.id
     `;
     const results = await queryAsync(query);
 
-    // Display the employees in a table format
     console.table(results);
+
+    console.log(); // Add a blank line
 
     // Return to the main menu
     showMenu();
@@ -591,3 +626,155 @@ async function viewEmployeesByDepartment() {
   }
 }
 
+// delete department function
+function deleteDepartment() {
+  // Retrieve the list of departments from the database
+  const query = 'SELECT id, name FROM department';
+
+  connection.query(query, (err, res) => {
+    if (err) {
+      console.error('Error retrieving departments:', err);
+      showMenu();
+    } else {
+      const departments = res.map((department) => ({
+        name: `${department.name} (ID: ${department.id})`,
+        value: department.id,
+      }));
+
+      // Prompt for the department ID you want to delete
+      inquirer
+        .prompt([
+          {
+            type: 'list',
+            name: 'departmentId',
+            message: 'Select the department you want to delete:',
+            choices: departments,
+          },
+        ])
+        .then((answer) => {
+          const departmentId = answer.departmentId;
+
+          // Delete the department from the database
+          const deleteQuery = 'DELETE FROM department WHERE id = ?';
+          connection.query(deleteQuery, [departmentId], (err, res) => {
+            if (err) {
+              console.error('Error deleting department:', err);
+            } else {
+              console.log('Department deleted successfully!');
+            }
+            showMenu();
+          });
+        })
+        .catch((err) => {
+          console.error(err);
+          showMenu();
+        });
+    }
+  });
+}
+
+// delete role function
+function deleteRole() {
+  // Retrieve the list of roles from the database
+  const query = 'SELECT id, title FROM role';
+
+  connection.query(query, (err, res) => {
+    if (err) {
+      console.error('Error retrieving roles:', err);
+      showMenu();
+    } else {
+      const roles = res.map((role) => ({
+        name: `${role.title} (ID: ${role.id})`,
+        value: role.id,
+      }));
+
+      // Prompt for the role ID you want to delete
+      inquirer
+        .prompt([
+          {
+            type: 'list',
+            name: 'roleId',
+            message: 'Select the role you want to delete:',
+            choices: roles,
+          },
+        ])
+        .then((answer) => {
+          const roleId = answer.roleId;
+
+          // Check if there are any employees assigned to the role being deleted
+          const checkQuery = 'SELECT COUNT(*) AS count FROM employee WHERE roleId = ?';
+          connection.query(checkQuery, [roleId], (err, res) => {
+            if (err) {
+              console.error('Error checking employees:', err);
+              showMenu();
+            } else {
+              const count = res[0].count;
+              if (count > 0) {
+                console.log('Cannot delete the role. There are employees assigned to this role.');
+                showMenu();
+              } else {
+                // Delete the role from the database
+                const deleteQuery = 'DELETE FROM role WHERE id = ?';
+                connection.query(deleteQuery, [roleId], (err, res) => {
+                  if (err) {
+                    console.error('Error deleting role:', err);
+                  } else {
+                    console.log('Role deleted successfully!');
+                  }
+                  showMenu();
+                });
+              }
+            }
+          });
+        })
+        .catch((err) => {
+          console.error(err);
+          showMenu();
+        });
+    }
+  });
+}
+
+// delete employee function
+async function deleteEmployee() {
+  try {
+    // Fetch the list of employees
+    const employees = await connection.promise().query('SELECT * FROM employee');
+
+    // Prompt the user to select an employee to delete
+    const employeeChoices = employees[0].map((employee) => ({
+      name: `${employee.firstName} ${employee.lastName}`,
+      value: employee.id,
+    }));
+    const answer = await inquirer.prompt([
+      {
+        type: 'list',
+        name: 'employeeId',
+        message: 'Select the employee to delete:',
+        choices: employeeChoices,
+      },
+      {
+        type: 'confirm',
+        name: 'confirmDelete',
+        message: 'Are you sure you want to delete this employee?',
+        default: false,
+      },
+    ]);
+
+    if (answer.confirmDelete) {
+      const employeeId = answer.employeeId;
+
+      // Delete the employee from the database
+      await connection.promise().query('DELETE FROM employee WHERE id = ?', [employeeId]);
+
+      console.log('Employee deleted successfully.');
+    } else {
+      console.log('Employee deletion canceled.');
+    }
+
+    // Return to the main menu
+    showMenu();
+  } catch (err) {
+    console.error(err);
+  }
+}
