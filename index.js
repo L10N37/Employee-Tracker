@@ -15,6 +15,9 @@ const connection = mysql.createConnection({
   multipleStatements: true,
 });
 
+// make queries asynchronous
+const util = require('util');
+const queryAsync = util.promisify(connection.query).bind(connection);
 
 // Connect to the database
 connection.connect((err) => {
@@ -133,11 +136,13 @@ function showMenu() {
     });
 }
 
+// Functions: These are using the promisify to ensure that the function executions are paused until the query resuls are available. This also allows us to 'catch' errors
+
 // Function to view all departments
-function viewDepartments() {
-  // Query the database to retrieve all departments
-  connection.query('SELECT * FROM department', (err, results) => {
-    if (err) throw err;
+async function viewDepartments() {
+  try {
+    // Query the database to retrieve all departments
+    const results = await queryAsync('SELECT * FROM department');
 
     console.log('Departments:');
     results.forEach((department) => {
@@ -146,5 +151,7 @@ function viewDepartments() {
 
     // Return to the main menu
     showMenu();
-  });
+  } catch (err) {
+    throw err;
+  }
 }
