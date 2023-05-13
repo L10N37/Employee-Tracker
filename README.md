@@ -1,10 +1,6 @@
 <!DOCTYPE html>
 <html>
 
-<head>
-  <title>Employee Management Database</title>
-</head>
-
 <body>
   <h1>Employee Management Database</h1>
 
