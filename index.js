@@ -139,7 +139,7 @@ function showMenu() {
     });
 }
 
-// Functions: These are using the promisify to ensure that the function executions are paused until the query resuls are available. This also allows us to 'catch' errors
+// Functions: These are using the promisify to ensure that the function executions are paused until the query resuls are available. This also allows us to 'catch' errors.
 
 // Function to view all departments
 async function viewDepartments() {
@@ -148,9 +148,50 @@ async function viewDepartments() {
     // Query the database to retrieve all departments
     const results = await queryAsync('SELECT * FROM department');
 
-    console.log('Departments:');
+    console.log('ID | Name');
     results.forEach((department) => {
-      console.log(`${department.id} | ${department.name}`);
+    console.log(`${department.id} | ${department.name}`);
+    console.log('-----------------');
+    });
+
+    // Return to the main menu
+    showMenu();
+  } catch (err) {
+    throw err;
+  }
+}
+
+// Function to view all roles
+async function viewRoles() {
+  showAsciiArt('Viewing Roles');
+  try {
+    // Query the database to retrieve all roles
+    const results = await queryAsync('SELECT * FROM role');
+
+    console.log('ID | Title | Salary | Department ID');
+    console.log('------------------------------------');
+    results.forEach((role) => {
+      console.log(`${role.id} | ${role.title} | ${role.salary} | ${role.departmentId}`);
+    });
+
+    // Return to the main menu
+    showMenu();
+  } catch (err) {
+    throw err;
+  }
+}
+
+// Function to view all employees
+async function viewEmployees() {
+  try {
+    showAsciiArt('Viewing Employees')
+    // Query the database to retrieve all employees
+    const results = await queryAsync('SELECT * FROM employee');
+
+    console.log('ID | First Name | Last Name | Role ID | Manager ID');
+    console.log('---------------------------------------------------');
+    results.forEach((employee) => {
+      console.log(`${employee.id} | ${employee.firstName} | ${employee.lastName} | ${employee.roleId} | ${employee.managerId}`);
     });
 
     // Return to the main menu
