@@ -537,4 +537,57 @@ async function viewEmployeesByManager() {
   }
 }
 
+// view employee by department function
+async function viewEmployeesByDepartment() {
+  try {
+    showAsciiArt('Viewing Employees by Department');
+
+    // Fetch the list of departments
+    const departments = await connection.promise().query('SELECT * FROM department');
+
+    // Prompt the user to select a department
+    const departmentChoices = departments[0].map((department) => ({
+      name: department.name,
+      value: department.id,
+    }));
+    const answers = await inquirer.prompt([
+      {
+        type: 'list',
+        name: 'departmentId',
+        message: 'Select a department:',
+        choices: departmentChoices,
+      },
+    ]);
+
+    const selectedDepartmentId = answers.departmentId;
+
+    // Query the database to retrieve employees in the selected department
+    const query = `
+      SELECT
+        e.id,
+        e.firstName,
+        e.lastName,
+        r.title AS jobRole,
+        d.name AS departmentName,
+        r.salary
+      FROM
+        employee e
+      INNER JOIN role r ON e.roleId = r.id
+      INNER JOIN department d ON r.departmentId = d.id
+      WHERE
+        d.id = ?
+      ORDER BY
+        e.id
+    `;
+    const results = await connection.promise().query(query, [selectedDepartmentId]);
+
+    // Display the employee information using console.table
+    console.table(results[0]);
+
+    // Return to the main menu
+    showMenu();
+  } catch (err) {
+    console.error(err);
+  }
+}
 
