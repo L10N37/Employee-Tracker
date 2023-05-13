@@ -75,13 +75,20 @@ function populateDatabase() {
 function showAsciiArt(value) {
   const figlet = require('figlet');
 
-  figlet(value, function (err, data) {
+  figlet(value, { font: 'Standard' }, function (err, data) {
     if (err) {
       console.log('Something went wrong...');
       console.dir(err);
       return;
     }
-    console.log(data);
+
+    let coloredArt = '';
+    for (let i = 0; i < data.length; i++) {
+      const randomColorCode = Math.floor(Math.random() * 7) + 31; // Generate random color code between 31 and 37
+      coloredArt += `\x1b[1m\x1b[${randomColorCode}m${data[i]}\x1b[0m`; // Set random color and bold style for each character
+    }
+
+    console.log(coloredArt);
   });
 }
 
