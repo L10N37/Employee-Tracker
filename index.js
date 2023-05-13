@@ -778,3 +778,53 @@ async function deleteEmployee() {
     console.error(err);
   }
 }
+
+// view department budget function
+function viewDepartmentBudget() {
+  // Retrieve the list of departments from the database
+  const query = 'SELECT id, name FROM department';
+
+  connection.query(query, (err, res) => {
+    if (err) {
+      console.error('Error retrieving departments:', err);
+      showMenu();
+    } else {
+      const departments = res.map((department) => ({
+        name: `${department.name} (ID: ${department.id})`,
+        value: department.id,
+      }));
+
+      // Prompt for the department ID to view the budget
+      inquirer
+        .prompt([
+          {
+            type: 'list',
+            name: 'departmentId',
+            message: 'Select the department to view the budget:',
+            choices: departments,
+          },
+        ])
+        .then((answer) => {
+          const departmentId = answer.departmentId;
+
+          // Calculate the department budget
+          const budgetQuery =
+            'SELECT SUM(r.salary) AS departmentBudget FROM employee e INNER JOIN role r ON e.roleId = r.id WHERE r.departmentId = ?';
+          connection.query(budgetQuery, [departmentId], (err, res) => {
+            if (err) {
+              console.error('Error calculating department budget:', err);
+            } else {
+              const departmentBudget = res[0].departmentBudget;
+              console.log(`Department Budget: $${departmentBudget}`);
+            }
+            showMenu();
+          });
+        })
+        .catch((err) => {
+          console.error(err);
+          showMenu();
+        });
+    }
+  });
+}
+
