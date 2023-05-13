@@ -815,7 +815,7 @@ function viewDepartmentBudget() {
               console.error('Error calculating department budget:', err);
             } else {
               const departmentBudget = res[0].departmentBudget;
-              console.log(`Department Budget: $${departmentBudget}`);
+              console.log('\n\x1b[36m\x1b[1mDepartment Budget:\x1b[0m \x1b[35m\x1b[4m$' + departmentBudget + '\x1b[0m\n');
             }
             showMenu();
           });
