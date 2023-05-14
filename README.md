@@ -56,11 +56,10 @@
     <li>Use the "Exit" option to close the application.</li>
   </ol>
 
+  <h2>Demonstration Video</h2>
+
+  <p>Check out the <a href="https://www.youtube.com/watch?v=AItgUZGym58">demonstration video</a> for a visual walkthrough of the application.</p>
+
   <h2>License</h2>
 
-<p>This project is licensed under the MIT License. See the <a href="LICENSE">LICENSE</a> file for details.</p>
-
-
-</body>
-
-</html>
+  <p>This project is licensed under the MIT License. See the <a href="LICENSE">LICENSE</a> file for details.</p
